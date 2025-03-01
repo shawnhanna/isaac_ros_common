@@ -44,7 +44,8 @@ fi
 ISAAC_ROS_DEV_DIR="${ISAAC_ROS_WS}"
 SKIP_IMAGE_BUILD=0
 VERBOSE=0
-VALID_ARGS=$(getopt -o hvd:i:ba: --long help,verbose,isaac_ros_dev_dir:,image_key:,skip_image_build,docker_arg: -- "$@")
+SKIP_RUN=0
+VALID_ARGS=$(getopt -o hvd:i:ba: --long help,verbose,isaac_ros_dev_dir:,image_key:,skip_image_build,skip_run,docker_arg: -- "$@")
 eval set -- "$VALID_ARGS"
 while [ : ]; do
   case "$1" in
@@ -71,6 +72,10 @@ while [ : ]; do
     -h | --help)
         usage
         exit 0
+        ;;
+    --skip_run)
+        SKIP_RUN=1
+        shift
         ;;
     --) shift;
         break
@@ -280,16 +285,20 @@ print_info "Running $CONTAINER_NAME"
 if [[ $VERBOSE -eq 1 ]]; then
     set -x
 fi
-docker run -it --rm \
-    --privileged \
-    --network host \
-    --ipc=host \
-    ${DOCKER_ARGS[@]} \
-    -v $ISAAC_ROS_DEV_DIR:/workspaces/isaac_ros-dev \
-    -v /etc/localtime:/etc/localtime:ro \
-    --name "$CONTAINER_NAME" \
-    --runtime nvidia \
-    --entrypoint /usr/local/bin/scripts/workspace-entrypoint.sh \
-    --workdir /workspaces/isaac_ros-dev \
-    $BASE_NAME \
-    /bin/bash
+
+# Check if the run command should be skipped
+if [[ $SKIP_RUN -eq 0 ]]; then
+    docker run -it --rm \
+        --privileged \
+        --network host \
+        --ipc=host \
+        ${DOCKER_ARGS[@]} \
+        -v $ISAAC_ROS_DEV_DIR:/workspaces/isaac_ros-dev \
+        -v /etc/localtime:/etc/localtime:ro \
+        --name "$CONTAINER_NAME" \
+        --runtime nvidia \
+        --entrypoint /usr/local/bin/scripts/workspace-entrypoint.sh \
+        --workdir /workspaces/isaac_ros-dev \
+        $BASE_NAME \
+        /bin/bash
+fi
